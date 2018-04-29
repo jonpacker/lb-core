@@ -1,0 +1,12 @@
+{
+  "name": "leaderbeer-core",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Jon Packer <contact@jonpacker.com>",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "fetch-check-http-status": "^2.0.0",
+    "node-fetch": "^2.1.2",
+    "thenby": "^1.2.3"
+  }
+}
