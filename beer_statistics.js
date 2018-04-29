@@ -41,6 +41,6 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials) => {
   return topRatedBeers;
 }
 
-exports.getTopRated = async (db) => {
-  return (await exports.getBayesianTopRated(db, app.config.venue_id, 30, app.utcred));
+exports.getTopRated = async (db, venue, count) => {
+  return (await exports.getBayesianTopRated(db, venue, count * 2)).slice(0,count);
 }
