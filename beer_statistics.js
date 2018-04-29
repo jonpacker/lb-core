@@ -13,6 +13,8 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials) => {
     else beers[beers.length - 1].rollingAverageRating = parseFloat(val);
     return beers;
   }, []);
+
+  if (topRatedBeers.length == 0) return [];
   
   db.multi();
   // get beer data
