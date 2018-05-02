@@ -1,7 +1,7 @@
 const {PFX} = require('./env.json');
 const firstBy = require('thenby');
 
-exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials, sesspfx) => {
+exports.getBayesianTopRated = async (db, venueId, fetchCount, sesspfx) => {
   const getpfx = () => `${PFX}_${venueId}${sesspfx ? `_sess_${sesspfx}` : ''}`;
 
   db.multi();
