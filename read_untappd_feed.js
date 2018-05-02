@@ -20,10 +20,11 @@ module.exports = async (venueId, currentNewestId, credentials) => {
 }
 
 const getVenueCheckins = async (venueId, minId, maxId, credentials) => {
-  const queryObj = {
-    client_id: credentials.client_id,
-    client_secret: credentials.client_secret
-  };
+  const queryObj = {};
+  Object.assign(queryObj, credentials)
+  // queryObj.access_token
+  // client_id: credentials.client_id,
+  // client_secret: credentials.client_secret
   if (minId != null) queryObj.min_id = minId;
   if (maxId != null) queryObj.max_id = maxId;
   const query = qs.stringify(queryObj);

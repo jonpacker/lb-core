@@ -1,12 +1,14 @@
 const {PFX} = require('./env.json');
 const firstBy = require('thenby');
 
-exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials) => {
+exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials, sesspfx) => {
+  const getpfx = () => `${PFX}_${venueId}${sesspfx ? `_sess_${sesspfx}` : ''}`;
+
   db.multi();
-  db.get(`${PFX}_${venueId}_totalValidCheckinCount`);
-  db.get(`${PFX}_${venueId}_totalBeerRatingSum`);
-  db.zcount(`${PFX}_${venueId}_beerRatingSet`, '-inf', '+inf');
-  db.zrevrange(`${PFX}_${venueId}_beerRatingSet`, 0, fetchCount - 1, 'WITHSCORES');
+  db.get(`${getpfx()}_totalValidCheckinCount`);
+  db.get(`${getpfx()}_totalBeerRatingSum`);
+  db.zcount(`${getpfx()}_beerRatingSet`, '-inf', '+inf');
+  db.zrevrange(`${getpfx()}_beerRatingSet`, 0, -1, 'WITHSCORES');
   const [totalValidCheckinCount, totalBeerRatingSum, totalBeerCount, topRatedBeersRaw] = await db.exec();
   const topRatedBeers = topRatedBeersRaw.reduce((beers, val, i) => {
     if (i % 2 == 0) beers.push({bid: val});
@@ -15,12 +17,12 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials) => {
   }, []);
 
   if (topRatedBeers.length == 0) return [];
-  
+
   db.multi();
   // get beer data
-  db.hmget(`${PFX}_${venueId}_beerData`, topRatedBeers.map(b => b.bid));
-  for (let beer of topRatedBeers) db.zscore(`${PFX}_${venueId}_beerValidCheckinCount`, beer.bid);
-  for (let beer of topRatedBeers) db.zscore(`${PFX}_${venueId}_beerGrossCheckinCount`, beer.bid);
+  db.hmget(`${getpfx()}_beerData`, topRatedBeers.map(b => b.bid));
+  for (let beer of topRatedBeers) db.zscore(`${getpfx()}_beerValidCheckinCount`, beer.bid);
+  for (let beer of topRatedBeers) db.zscore(`${getpfx()}_beerGrossCheckinCount`, beer.bid);
 
   const beerMetadata = await db.exec();
   const averageRatingCount = totalValidCheckinCount / totalBeerCount;
@@ -40,9 +42,9 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, credentials) => {
     .thenBy(b => b.beer.beer_name)
   );
 
-  return topRatedBeers;
+  return topRatedBeers.slice(0, fetchCount);
 }
 
-exports.getTopRated = async (db, venue, count) => {
-  return (await exports.getBayesianTopRated(db, venue, count * 2)).slice(0,count);
+exports.getTopRated = async (db, venue, count, sesspfx) => {
+  return await exports.getBayesianTopRated(db, venue, count, sesspfx);
 }
