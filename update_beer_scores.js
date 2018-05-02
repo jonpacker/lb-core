@@ -1,7 +1,7 @@
 const getVenueFeed = require('./read_untappd_feed');
 const {PFX} = require('./env.json');
 
-exports.readUntappdFeed = async (db, venueId, credentials, defaultFirstCheckin) => {
+exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin) => {
   let lastUsedCheckinId = await db.get(`${PFX}_${venueId}_latestCheckinId`);
   if (lastUsedCheckinId == null) lastUsedCheckinId = defaultFirstCheckin;
   const checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
