@@ -1,5 +1,6 @@
+const {updateBeerScores, getCurrentSession,setSession, clearSession, getSessions} = require('updateBeerScores')
 module.exports = {
-  updateBeerScores: require('./update_beer_scores'),
+  updateBeerScores, setSession, clearSession, getSessions, getCurrentSession, 
   stats: require('./beer_statistics'),
-  reader: require('./update_beer_scores')
+  reader: require('./read_untappd_feed')
 }

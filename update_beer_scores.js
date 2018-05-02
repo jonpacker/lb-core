@@ -1,7 +1,7 @@
 const getVenueFeed = require('./read_untappd_feed');
 const {PFX} = require('./env.json');
 
-module.exports = async (db, venueId, credentials, defaultFirstCheckin) => {
+exports.readUntappdFeed = async (db, venueId, credentials, defaultFirstCheckin) => {
   let lastUsedCheckinId = await db.get(`${PFX}_${venueId}_latestCheckinId`);
   if (lastUsedCheckinId == null) lastUsedCheckinId = defaultFirstCheckin;
   const checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
@@ -10,6 +10,23 @@ module.exports = async (db, venueId, credentials, defaultFirstCheckin) => {
   const currentSess = await db.get(`${PFX}_${venueId}_currentSession`);
   if (currentSess) await updateRedisRatings(db, venueId, currentSess, checkins);
   return checkins.length;
+}
+
+exports.setSession = async (db, venueId, session) {
+  await db.set(`${PFX}_${venueId}_currentSession`, session);
+  await db.lpush(`${PFX}_${venueId}_sessions`, session);
+}
+
+exports.getSessions = async (db, venueId, session) {
+  return await db.lrange(`${PFX}_${venueId}_sessions`, 0, -1) || [];
+}
+
+exports.getCurrentSession = async (db, venueId) {
+  return await db.get(`${PFX}_${venueId}_currentSession`);
+}
+
+exports.clearSession = async (db, venueId) {
+  await db.del(`${PFX}_${venueId}_currentSession`);
 }
 
 const updateRedisRatings = async (db, venueId, sesspfx, checkins) => {
