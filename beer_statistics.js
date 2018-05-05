@@ -37,7 +37,7 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, sesspfx, sortMode)
   });
   if (sortMode == 'checkins') {
     topRatedBeers.sort(
-      firstBy('grossCheckinCount', -1)
+      firstBy('validCheckinCount', -1)
       .thenBy(b => b.beer.beer_name)
     );
   } else {
