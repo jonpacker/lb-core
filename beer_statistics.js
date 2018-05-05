@@ -1,7 +1,7 @@
 const {PFX} = require('./env.json');
 const firstBy = require('thenby');
 
-exports.getBayesianTopRated = async (db, venueId, fetchCount, sesspfx) => {
+exports.getBayesianTopRated = async (db, venueId, fetchCount, sesspfx, sortMode) => {
   const getpfx = () => `${PFX}_${venueId}${sesspfx ? `_sess_${sesspfx}` : ''}`;
 
   db.multi();
@@ -35,16 +35,27 @@ exports.getBayesianTopRated = async (db, venueId, fetchCount, sesspfx) => {
     beer.grossCheckinCount = parseInt(beerMetadata[i * 2 + 1]);
     beer.bayesianRating = (averageRatingCount * averageRating + beer.validCheckinCount * beer.rollingAverageRating) / (averageRatingCount + beer.validCheckinCount);
   });
-  topRatedBeers.sort(
-    firstBy('bayesianRating', -1)
-    .thenBy('validCheckinCount')
-    .thenBy('grossCheckinCount')
-    .thenBy(b => b.beer.beer_name)
-  );
+  if (sortMode == 'checkins') {
+    topRatedBeers.sort(
+      firstBy('bayesianRating', -1)
+      .thenBy('validCheckinCount')
+      .thenBy('grossCheckinCount')
+      .thenBy(b => b.beer.beer_name)
+    );
+  } else {
+    topRatedBeers.sort(
+      .firstBy('grossCheckinCount')
+      .thenBy(b => b.beer.beer_name)
+    );
+  }
 
   return topRatedBeers.slice(0, fetchCount);
 }
 
 exports.getTopRated = async (db, venue, count, sesspfx) => {
   return await exports.getBayesianTopRated(db, venue, count, sesspfx);
+}
+
+exports.getTopCheckedIn = async (db, venue, count, sesspfx) => {
+  return await exports.getBayesianTopRated(db, venue, count, sesspfx, 'checkins');
 }
