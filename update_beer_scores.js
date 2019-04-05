@@ -1,15 +1,19 @@
 const getVenueFeed = require('./read_untappd_feed');
 const {PFX} = require('./env.json');
 
-exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin) => {
+exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin, shouldAcceptBeer) => {
   let lastUsedCheckinId = await db.get(`${PFX}_${venueId}_latestCheckinId`);
   if (lastUsedCheckinId == null) lastUsedCheckinId = defaultFirstCheckin;
   const checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
   if (checkins.length > 0) await db.set(`${PFX}_${venueId}_latestCheckinId`, checkins[0].checkin_id);
-  await updateRedisRatings(db, venueId, null, checkins);
+  const acceptedCheckins = shouldAcceptBeer ? checkins.filter(shouldAcceptBeer) : checkins
+  await updateRedisRatings(db, venueId, null, acceptedCheckins);
   const currentSess = await db.get(`${PFX}_${venueId}_currentSession`);
-  if (currentSess) await updateRedisRatings(db, venueId, currentSess, checkins);
-  return checkins.length;
+  if (currentSess) await updateRedisRatings(db, venueId, currentSess, acceptedCheckins);
+  if (checkins.length !== acceptedCheckins.length) {
+    console.log(`(got ${checkins.length} total, accepted ${acceptedCheckins.length})`)
+  }
+  return acceptedCheckins.length;
 }
 
 exports.setSession = async (db, venueId, session) => {
@@ -22,7 +26,7 @@ exports.getSessions = async (db, venueId, session) => {
 }
 
 exports.getCurrentSession = async (db, venueId) => {
-  return await db.get(`${PFX}_${venueId}_currentSession`);
+  return await db.get(`${PFX}_${venueId}_currentSession`)
 }
 
 exports.clearSession = async (db, venueId) => {
