@@ -3,8 +3,19 @@ const qs = require('querystring');
 const checkStatus = require('fetch-check-http-status').default;
 const API_ENDPOINT = 'https://api.untappd.com/v4';
 module.exports = async (venueId, currentNewestId, credentials) => {
-  let {checkins} = await getVenueCheckins(venueId, currentNewestId, null, credentials);
-  if (checkins == -1) return [];
+  let {checkins, hitMaxAgeLimit} = await getVenueCheckins(venueId, currentNewestId, null, credentials);
+  if (checkins == -1) {
+    if (hitMaxAgeLimit) {
+      const retry = await getVenueCheckins(venueId, null, null, credentials)
+      if (retry.hitMaxAgeLimit) {
+        console.error('LB hit max age limit after retrying for venue. Possibly there has been no checkins at this venue for over 10 days')
+        return []
+      } else {
+        return retry.checkins.items.filter(c => c.checkin_id > currentNewestId)
+      }
+    }
+    return [];
+  }
   let allCheckins = checkins.items;
   while (currentNewestId != null && checkins.items.length == 25) {
     let lastCheckin = allCheckins[allCheckins.length - 1];
@@ -19,7 +30,7 @@ module.exports = async (venueId, currentNewestId, credentials) => {
   return allCheckins;
 }
 
-const getVenueCheckins = async (venueId, minId, maxId, credentials) => {
+const getVenueCheckins = async (venueId, minId, maxId, credentials, isRetrying) => {
   const queryObj = {};
   Object.assign(queryObj, credentials)
   // queryObj.access_token
@@ -34,8 +45,14 @@ const getVenueCheckins = async (venueId, minId, maxId, credentials) => {
   if (untappdResponse.meta.code != 200) {
     if (untappdResponse.meta.code == 500 && untappdResponse.meta.error_type == "invalid_param") {
       // can't read any more all checkins beyond are out of reach of the API (>300 || >10 days)
-      console.log(Date.now(), 'hit invalid_param limit');
+      console.log(Date.now(), '500 hit invalid_param limit');
+      console.log(untappdResponse.meta)
       return {checkins: -1};
+    } else if (untappdResponse.meta.code == 429) {
+      console.log(Date.now(), '429 hit rate limit');
+    } else if (untappdResponse.meta.code == 400) {
+      console.log(Date.now(), '400 hit max age limit');
+      return {checkins: -1, hitMaxAgeLimit: true}
     }
     throw new Error(`Unexpected code from Untappd. Response follows: ${JSON.stringify(untappdResponse, true, ' ')}`);
   }
