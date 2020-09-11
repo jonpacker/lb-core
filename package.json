@@ -6,7 +6,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "fetch-check-http-status": "^2.0.0",
-    "node-fetch": "^2.1.2",
+    "node-fetch": "^2.6.1",
     "thenby": "^1.2.3"
   }
 }
