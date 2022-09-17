@@ -6,9 +6,11 @@ exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin,
   if (lastUsedCheckinId == null) lastUsedCheckinId = defaultFirstCheckin;
   let checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
   if (checkins.length > 0) await db.set(`${PFX}_${venueId}_latestCheckinId`, checkins[0].checkin_id);
+    console.log({extraVenueId})
   if (extraVenueId) {
     let lastUsedExtraCheckinId = await db.get(`${PFX}_${venueId}_latestExtraCheckinId`);
     const otherVenueCheckins = await getVenueFeed(extraVenueId, lastUsedExtraCheckinId, credentials)
+    console.log(otherVenueCheckins.length)
     if (otherVenueCheckins.length > 0) await db.set(`${PFX}_${venueId}_latestExtraCheckinId`, otherVenueCheckins[0].checkin_id);
     checkins = [...checkins, ...otherVenueCheckins]
   }
