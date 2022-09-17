@@ -1,12 +1,18 @@
 const getVenueFeed = require('./read_untappd_feed');
 const {PFX} = require('./env.json');
 
-exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin, shouldAcceptBeer, checkinCallback) => {
+exports.updateBeerScores = async (db, venueId, credentials, defaultFirstCheckin, shouldAcceptBeer, checkinTransform, extraVenueId) => {
   let lastUsedCheckinId = await db.get(`${PFX}_${venueId}_latestCheckinId`);
   if (lastUsedCheckinId == null) lastUsedCheckinId = defaultFirstCheckin;
-  const checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
+  let checkins = await getVenueFeed(venueId, lastUsedCheckinId, credentials);
   if (checkins.length > 0) await db.set(`${PFX}_${venueId}_latestCheckinId`, checkins[0].checkin_id);
-  if (checkinCallback) checkins.map(checkin => checkinCallback(checkin))
+  if (extraVenueId) {
+    let lastUsedExtraCheckinId = await db.get(`${PFX}_${venueId}_latestExtraCheckinId`);
+    const otherVenueCheckins = await getVenueFeed(extraVenueId, lastUsedExtraCheckinId, credentials)
+    if (otherVenueCheckins.length > 0) await db.set(`${PFX}_${venueId}_latestExtraCheckinId`, otherVenueCheckins[0].checkin_id);
+    checkins = [...checkins, ...otherVenueCheckins]
+  }
+  if (checkinTransform) checkins.map(checkin => checkinTransform(checkin))
   const acceptedCheckins = shouldAcceptBeer ? checkins.filter(shouldAcceptBeer) : checkins
   await updateRedisRatings(db, venueId, null, acceptedCheckins);
   const currentSess = await db.get(`${PFX}_${venueId}_currentSession`);
