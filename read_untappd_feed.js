@@ -1,8 +1,15 @@
 const fetch = require('node-fetch');
 const qs = require('querystring');
 const checkStatus = require('fetch-check-http-status').default;
-const API_ENDPOINT = 'https://api.untappd.com/v4';
-module.exports = async (venueId, currentNewestId, credentials) => {
+const { JSDOM } = require('jsdom')
+const path = require('path')
+
+const getPathName = url => url ? path.parse(url)?.name : url
+module.exports = async (venueId, currentNewestId) => {
+  let checkins = await getVenueCheckins(venueId)
+  return checkins.filter(checkin => checkin.checkin_id > currentNewestId)
+
+  /*
   let {checkins, hitMaxAgeLimit} = await getVenueCheckins(venueId, currentNewestId, null, credentials);
   if (checkins == -1) {
     if (hitMaxAgeLimit) {
@@ -28,20 +35,56 @@ module.exports = async (venueId, currentNewestId, credentials) => {
     allCheckins = allCheckins.concat(checkins.items);
   }
   return allCheckins;
+  */
 }
 
-const getVenueCheckins = async (venueId, minId, maxId, credentials, isRetrying) => {
-  const queryObj = {};
-  Object.assign(queryObj, credentials)
-  // queryObj.access_token
-  // client_id: credentials.client_id,
-  // client_secret: credentials.client_secret
-  if (minId != null) queryObj.min_id = minId;
-  if (maxId != null) queryObj.max_id = maxId;
-  const query = qs.stringify(queryObj);
-  console.log('querying endpoint', `${API_ENDPOINT}/venue/checkins/${venueId}?${query}`);
-  const response = await fetch(`${API_ENDPOINT}/venue/checkins/${venueId}?${query}`);
-  const untappdResponse = await response.json();
+const getBeersForVenueId = async (venueId) => {
+  const response = await fetch(`https://untappd.com/v/_/${venueId}/activity`)
+  const html = await response.text()
+  const dom = new JSDOM(html)
+  if (!dom?.window) throw new Error('Could not read Untappd response')
+  const document = dom.window.document
+  const checkinElements = document.querySelectorAll('#main-stream .checkin')
+  let checkins = []
+  for (const checkinElement of checkinElements) {
+    const userElement = checkinElement.querySelector('a.user')
+    const beerElement = checkinElement.querySelector('a.user + a')
+    const breweryElement = checkinElement.querySelector('a.user + a + a')
+    const detailedCheckinLink = checkinElement.querySelector('.bottom a')
+    const commentTextElement = checkinElement.querySelector('.comment-text')
+    const ratingElement = checkinElement.querySelector('.rating-serving .caps')
+    let rating = ratingElement?.getAttribute('data-rating')
+    if (rating) rating = parseFloat(rating)
+    else rating = null
+    const checkin = {
+      checkin_id: getPathName(detailedCheckinLink.getAttribute('href')),
+      created_at: detailedCheckinLink.getAttribute('data-gregtime'),
+      checkin_comment: commentTextElement?.innerHTML,
+      rating_score: rating,
+      user: {
+        user_name: getPathName(userElement.getAttribute('href')),
+        user_avatar: checkinElement.querySelector('.avatar-holder img')?.getAttribute('src')
+      },
+      beer: {
+        bid: getPathName(beerElement.getAttribute('href')),
+        beer_name: beerElement.innerHTML
+      },
+      brewery: {
+        brewery_id: getPathName(breweryElement.getAttribute('href')),
+        brewery_name: breweryElement.innerHTML
+      }
+    }
+    checkins.push(checkin)
+  }
+  return checkins
+}
+
+
+const getVenueCheckins = async (venueId) => {
+  //const queryObj = {};
+  //Object.assign(queryObj, credentials)
+
+  /*
   if (untappdResponse.meta.code != 200) {
     if (untappdResponse.meta.code == 500 && untappdResponse.meta.error_type == "invalid_param") {
       // can't read any more all checkins beyond are out of reach of the API (>300 || >10 days)
@@ -56,5 +99,6 @@ const getVenueCheckins = async (venueId, minId, maxId, credentials, isRetrying) 
     }
     throw new Error(`Unexpected code from Untappd. Response follows: ${JSON.stringify(untappdResponse, true, ' ')}`);
   }
-  return untappdResponse.response;
+  */
+  return await getBeersForVenueId(venueId);
 }

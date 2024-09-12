@@ -6,7 +6,8 @@
   "license": "UNLICENSED",
   "dependencies": {
     "fetch-check-http-status": "^2.0.0",
-    "node-fetch": "^2.1.2",
+    "jsdom": "^25.0.0",
+    "node-fetch": "^2.7.0",
     "thenby": "^1.2.3"
   }
 }
